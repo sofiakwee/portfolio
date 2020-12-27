@@ -1,0 +1,101 @@
+import numpy as np
+import matplotlib
+%matplotlib inline
+import matplotlib.pyplot as plt
+import scipy.stats as stats
+plt.style.use('fivethirtyeight')
+import pandas as pd
+import seaborn as sns
+import sklearn
+from sklearn import preprocessing
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import scale
+from sklearn.manifold import TSNE
+from sklearn.cluster import KMeans
+from scipy.spatial.distance import cdist
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import scale
+from sklearn.manifold import TSNE
+plt.style.use('fivethirtyeight')
+import keras
+from sklearn.metrics import confusion_matrix
+from keras.models import load_model
+from keras.models import Sequential
+from keras.layers import Dense, Dropout, Activation
+from keras.optimizers import Adam
+from keras.utils import plot_model
+from sklearn.preprocessing import OneHotEncoder
+
+sc_meta = pd.read_csv('https://raw.githubusercontent.com/ds-connectors/Data88-Genetics_and_Genomics/master/Project_data/OPC_meta.csv', index_col = 0)
+sc_mat = pd.read_csv('https://raw.githubusercontent.com/ds-connectors/Data88-Genetics_and_Genomics/master/Project_data/OPC_mat.csv', index_col = 0)
+
+plt.scatter(principalComponents[sc_meta['animal_type'] == 'old',0], principalComponents[sc_meta['animal_type'] == 'old',1])
+plt.scatter(principalComponents[sc_meta['animal_type'] == 'young',0], principalComponents[sc_meta['animal_type'] == 'young',1])
+plt.legend(['Old','Young'])
+plt.xlabel('PC 1')
+plt.ylabel('PC 2')
+plt.title('PCA, true labels')
+plt.show()
+
+tsne = TSNE(n_components = 2)
+
+plt.scatter(X_embedded[sc_meta['animal_type'] == 'old',0], X_embedded[sc_meta['animal_type'] == 'old',1])
+plt.scatter(X_embedded[sc_meta['animal_type'] == 'young',0], X_embedded[sc_meta['animal_type'] == 'young',1])
+plt.legend(['Old','Young'])
+plt.xlabel('t-SNE 1')
+plt.ylabel('t-SNE 2')
+plt.title('t-SNE, true labels')
+plt.show()
+
+sc_labels = sc_meta.animal_type[:]   
+sc_features = sc_mat.T        
+X_train, X_test, y_train, y_test = train_test_split(sc_features, sc_labels, test_size=0.3)
+
+#knn
+from sklearn import neighbors
+
+train_y = (np.array(y_train) == 'young')
+test_y = (np.array(y_test) == 'young')
+
+for i, weights in enumerate(['uniform', 'distance']):
+    knn = neighbors.KNeighborsRegressor(11, weights=weights)
+    y_ = knn.fit(X_train, train_y).predict(X_test)
+    
+np.mean((y_ >= .5)*1 == test_y)
+NNpred = (y_ >= .5)*1
+confusion_matrix(test_y, NNpred)
+
+#Linear regression
+x = StandardScaler().fit_transform(np.log2(X_test+1))
+pca = PCA(n_components = 100)
+principalComponents = pca.fit_transform(x)
+tsne = TSNE(n_components = 2)
+X_embedded = tsne.fit_transform(principalComponents)
+plt.figure(figsize=(15,5))
+plt.subplot(133)
+plt.scatter(X_embedded[NNpred == test_y,0], X_embedded[NNpred == test_y,1])
+plt.scatter(X_embedded[NNpred != test_y,0], X_embedded[NNpred != test_y,1])
+plt.legend(['Correct','Incorrect'])
+plt.xlabel('t-SNE 1')
+plt.ylabel('t-SNE 2')
+plt.title('t-SNE, Classification performance for kNN')
+plt.show()
+
+from sklearn.linear_model import LogisticRegression
+
+x = LogisticRegression(random_state = 0)
+lr_accuracy = sum(predictions == y_test)/len(predictions)
+lr_accuracy
+
+#Radom Forest
+clf=RandomForestClassifier(n_estimators = 200)
+clf.fit(X_train, y_train)
+y_train_pred = clf.predict(X_train)
+y_test_pred = clf.predict(X_test)
+
+[np.mean(y_train_pred == y_train), np.mean(y_test_pred == y_test)]
